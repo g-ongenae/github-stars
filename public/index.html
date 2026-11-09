@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My GitHub stars</title>
+<style>
+  :root {
+    --bg: #fbfbfa; --fg: #1f2328; --muted: #656d76; --line: #e4e4e0; --card: #fff;
+    --accent: #2f6feb; --hover: #f3f4f1; --error: #c0392b;
+    --active: #1a7f37; --maintained: #3b82a0; --quiet: #b7791f; --dormant: #8c959f; --archived: #c0392b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #111315; --fg: #e6e6e3; --muted: #9198a1; --line: #2b2f33; --card: #181a1d;
+      --accent: #6ea8fe; --hover: #1f2226; --error: #f47067;
+      --active: #4ac26b; --maintained: #6cb6d0; --quiet: #e3b341; --dormant: #6e7681; --archived: #f47067; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; background: var(--bg); color: var(--fg); }
+  header { position: sticky; top: 0; z-index: 2; background: var(--bg); border-bottom: 1px solid var(--line); padding: 14px 24px 10px; }
+  h1 { font-size: 20px; margin: 0 0 2px; }
+  .sub { color: var(--muted); font-size: 12.5px; }
+  #status.error { color: var(--error); }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center; }
+  input, select, button { font: inherit; color: inherit; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
+  button { cursor: pointer; }
+  button:hover { background: var(--hover); }
+  button:disabled { opacity: .5; cursor: default; }
+  #q { width: 280px; }
+  .spacer { flex: 1; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip { border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 12.5px; cursor: pointer; background: var(--card); user-select: none; }
+  .chip b { font-weight: 600; color: var(--muted); margin-left: 4px; }
+  .chip.on { border-color: var(--accent); color: var(--accent); }
+  main { padding: 0 24px 40px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600;
+       padding: 8px 8px; border-bottom: 1px solid var(--line); cursor: pointer; white-space: nowrap; position: sticky; top: var(--hdr, 150px); background: var(--bg); }
+  th.sorted::after { content: " ↓"; } th.sorted.asc::after { content: " ↑"; }
+  td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:hover td { background: var(--hover); }
+  .repo a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .repo a:hover { text-decoration: underline; }
+  .desc { color: var(--muted); font-size: 12.5px; margin-top: 2px; max-width: 560px; }
+  .tags { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
+  .tag { font-size: 11px; padding: 0 6px; border-radius: 4px; background: var(--hover); color: var(--muted); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .when { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .ago { color: var(--muted); font-size: 12px; }
+  .live { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  td input { width: 100%; min-width: 150px; border-color: transparent; background: transparent; padding: 3px 6px; }
+  td input:hover, td input:focus { border-color: var(--line); background: var(--card); }
+  td input.edited { border-left: 2px solid var(--accent); }
+  .lang { color: var(--muted); white-space: nowrap; font-size: 12.5px; }
+  .empty { padding: 40px; text-align: center; color: var(--muted); }
+  .no-lists .col-lists, .no-lists #fList { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>My GitHub stars</h1>
+  <div class="sub"><span id="count"></span> · <span id="status">Loading…</span></div>
+  <div class="controls">
+    <input id="q" type="search" placeholder="Search name, description, tags, notes…">
+    <select id="fLive"><option value="">Any liveliness</option></select>
+    <select id="fLang"><option value="">Any language</option></select>
+    <select id="fList"><option value="">Any former list</option><option value="(none)">In no list</option></select>
+    <label class="sub"><input type="checkbox" id="hideArchived"> hide archived</label>
+    <span class="spacer"></span>
+    <button id="refresh" title="Fetch all stars from GitHub again">Refresh</button>
+    <button id="exportCsv">Export CSV</button>
+    <button id="reset" title="Discard all Topic and Notes edits">Reset edits</button>
+  </div>
+  <div class="chips" id="chips"></div>
+</header>
+<main>
+  <table>
+    <thead><tr>
+      <th data-k="repo">Project</th>
+      <th data-k="topic">Topic</th>
+      <th data-k="stars" class="num">Stars</th>
+      <th data-k="last">Last commit</th>
+      <th data-k="live">Liveliness</th>
+      <th data-k="lists" class="col-lists">Former lists</th>
+      <th data-k="lang">Language</th>
+      <th data-k="starred">Starred on</th>
+      <th data-k="notes">Notes</th>
+    </tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div class="empty" id="empty" hidden>No matching projects.</div>
+</main>
+<datalist id="topics"></datalist>
+
+<script>
+// Rows come from the local server (src/server.js), which caches them outside the repository.
+// Topic and Notes edits are saved by the server too, so they survive across browsers.
+let DATA = [], edits = {}, fetchedAt = null;
+
+const DAY = 864e5;
+const LIVE = [
+  { key: 'Active',     max: 90,       color: 'var(--active)',     hint: 'commit in the last 3 months' },
+  { key: 'Maintained', max: 365,      color: 'var(--maintained)', hint: 'commit in the last year' },
+  { key: 'Quiet',      max: 365 * 3,  color: 'var(--quiet)',      hint: 'last commit 1–3 years ago' },
+  { key: 'Dormant',    max: Infinity, color: 'var(--dormant)',    hint: 'no commit for 3+ years' },
+  { key: 'Archived',   color: 'var(--archived)', hint: 'archived by its owner' },
+];
+const LIVE_RANK = Object.fromEntries(LIVE.map((l, i) => [l.key, i]));
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmtStars = n => n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'k' : String(n);
+const ago = d => d < 1 ? 'today' : d < 31 ? d + 'd ago' : d < 365 ? Math.round(d / 30.4) + 'mo ago' : (d / 365).toFixed(1).replace(/\.0$/, '') + 'y ago';
+
+let sortKey = 'starred', sortAsc = false, topicFilter = new Set();
+
+for (const l of LIVE) $('fLive').add(new Option(`${l.key} — ${l.hint}`, l.key));
+
+async function api(method, path, body) {
+  const init = method === 'GET' ? {} : { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body ?? {}) };
+  const res = await fetch(path, init);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+function setStatus(text, error = false) {
+  $('status').textContent = text;
+  $('status').classList.toggle('error', error);
+  fixHeaderOffset();
+}
+function fetchedText() {
+  if (!fetchedAt) return '';
+  const d = new Date(fetchedAt), mins = Math.round((Date.now() - d) / 6e4);
+  const rel = mins < 1 ? 'just now' : mins < 60 ? `${mins} min ago` : mins < 1440 ? `${Math.round(mins / 60)} h ago` : ago(Math.floor(mins / 1440));
+  return `data fetched ${d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} (${rel})`;
+}
+
+// Shows the server's fetch progress until the returned function is called.
+function watchProgress(prefix) {
+  let stopped = false;
+  const timer = setInterval(async () => {
+    const p = await api('GET', '/api/progress').catch(() => null);
+    if (!stopped && p?.running && p.total) setStatus(`${prefix}fetching stars from GitHub, ${p.done} of ${p.total}…`);
+  }, 1000);
+  return () => { stopped = true; clearInterval(timer); };
+}
+
+function load(data) {
+  fetchedAt = data.fetchedAt;
+  edits = data.edits || {};
+  DATA = data.rows;
+  const now = Date.now();
+  for (const r of DATA) {
+    Object.assign(r, edits[r.repo] || {});
+    r.age = r.last ? Math.floor((now - Date.parse(r.last)) / DAY) : Infinity;
+    r.live = r.archived ? 'Archived' : LIVE.find(l => r.age <= l.max).key;
+  }
+  fillSelect($('fLang'), 1, [...new Set(DATA.map(r => r.lang).filter(Boolean))].sort());
+  fillSelect($('fList'), 2, [...new Set(DATA.flatMap(r => r.lists))].sort());
+  document.body.classList.toggle('no-lists', !DATA.some(r => r.lists.length));
+  renderChips(); render(); fixHeaderOffset();
+}
+
+// Replaces the options after the first `keep` ones, keeping the current choice when it still exists.
+function fillSelect(sel, keep, values) {
+  const current = sel.value;
+  while (sel.options.length > keep) sel.remove(keep);
+  for (const v of values) sel.add(new Option(v, v));
+  sel.value = [...sel.options].some(o => o.value === current) ? current : '';
+}
+
+async function saveEdit(input, repo, field, value) {
+  (edits[repo] ||= {})[field] = value;
+  input.classList.add('edited');
+  try {
+    await api('PUT', '/api/edits', { repo, field, value });
+  } catch (e) {
+    input.classList.remove('edited');
+    setStatus(`Could not save the ${field} of ${repo}: ${e.message}`, true);
+  }
+}
+
+function renderChips() {
+  const counts = {};
+  for (const r of DATA) counts[r.topic || '(none)'] = (counts[r.topic || '(none)'] || 0) + 1;
+  const names = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+  $('chips').innerHTML = names.map(n =>
+    `<span class="chip${topicFilter.has(n) ? ' on' : ''}" data-t="${esc(n)}">${esc(n)}<b>${counts[n]}</b></span>`).join('');
+  $('topics').innerHTML = names.filter(n => n !== '(none)').map(n => `<option value="${esc(n)}">`).join('');
+}
+
+function filtered() {
+  const q = $('q').value.trim().toLowerCase(), live = $('fLive').value, lang = $('fLang').value, list = $('fList').value, hideArch = $('hideArchived').checked;
+  return DATA.filter(r =>
+    (!topicFilter.size || topicFilter.has(r.topic || '(none)')) &&
+    (!live || r.live === live) && (!lang || r.lang === lang) &&
+    (!list || (list === '(none)' ? !r.lists.length : r.lists.includes(list))) && !(hideArch && r.archived) &&
+    (!q || [r.repo, r.desc, r.tags.join(' '), r.topic, r.notes, r.lang, r.lists.join(' ')].join(' ').toLowerCase().includes(q)));
+}
+
+function render() {
+  const rows = filtered();
+  const val = r => sortKey === 'live' ? LIVE_RANK[r.live] : sortKey === 'last' ? -r.age : sortKey === 'lists' ? r.lists.join(', ') : r[sortKey];
+  rows.sort((a, b) => {
+    const x = val(a), y = val(b);
+    const c = typeof x === 'number' ? x - y : String(x).localeCompare(String(y), undefined, { sensitivity: 'base' });
+    return sortAsc ? c : -c;
+  });
+  $('rows').innerHTML = rows.map(r => {
+    const l = LIVE[LIVE_RANK[r.live]];
+    return `<tr data-repo="${esc(r.repo)}">
+      <td class="repo"><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.repo)}</a>
+        ${r.desc ? `<div class="desc">${esc(r.desc)}</div>` : ''}
+        ${r.tags.length ? `<div class="tags">${r.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}</td>
+      <td><input data-f="topic" list="topics" value="${esc(r.topic)}" class="${edits[r.repo]?.topic !== undefined ? 'edited' : ''}"></td>
+      <td class="num">★ ${fmtStars(r.stars)}</td>
+      <td class="when">${esc(r.last)}<div class="ago">${ago(r.age)}</div></td>
+      <td><span class="live" title="${l.hint}"><span class="dot" style="background:${l.color}"></span>${r.live}</span></td>
+      <td class="col-lists">${r.lists.map(t => `<span class="tag">${esc(t)}</span>`).join(' ')}</td>
+      <td class="lang">${esc(r.lang)}</td>
+      <td class="when">${esc(r.starred)}</td>
+      <td><input data-f="notes" value="${esc(r.notes)}" placeholder="—" class="${edits[r.repo]?.notes ? 'edited' : ''}"></td>
+    </tr>`;
+  }).join('');
+  $('empty').hidden = rows.length > 0;
+  $('count').textContent = rows.length === DATA.length ? `${DATA.length} starred projects` : `${rows.length} of ${DATA.length} starred projects`;
+  document.querySelectorAll('th').forEach(th => {
+    th.classList.toggle('sorted', th.dataset.k === sortKey);
+    th.classList.toggle('asc', th.dataset.k === sortKey && sortAsc);
+  });
+}
+
+function fixHeaderOffset() {
+  document.documentElement.style.setProperty('--hdr', document.querySelector('header').offsetHeight + 'px');
+}
+
+// Asks the server whether the stars changed on GitHub; it refetches them if so (or if `force`).
+async function check(force) {
+  $('refresh').disabled = true;
+  setStatus(`${fetchedText()} · ${force ? 'refreshing…' : 'checking GitHub for changes…'}`);
+  const stop = watchProgress(`${fetchedText()} · `);
+  try {
+    const r = await api('POST', '/api/check', { force });
+    stop();
+    if (!r.changed) return setStatus(`${fetchedText()} · up to date`);
+    load(r);
+    const parts = [];
+    if (r.added.length) parts.push(`${r.added.length} new (${r.added.slice(0, 3).join(', ')}${r.added.length > 3 ? '…' : ''})`);
+    if (r.removed.length) parts.push(`${r.removed.length} unstarred (${r.removed.slice(0, 3).join(', ')}${r.removed.length > 3 ? '…' : ''})`);
+    setStatus(`${fetchedText()} · updated: ${parts.join(', ') || 'star counts and commit dates refreshed'}`);
+  } catch (e) {
+    stop();
+    setStatus(`${fetchedText()} · could not check GitHub: ${e.message}`, true);
+  } finally {
+    $('refresh').disabled = false;
+  }
+}
+
+$('rows').addEventListener('change', e => {
+  const f = e.target.dataset.f; if (!f) return;
+  const repo = e.target.closest('tr').dataset.repo, r = DATA.find(x => x.repo === repo);
+  r[f] = e.target.value.trim();
+  saveEdit(e.target, repo, f, r[f]);
+  if (f === 'topic') { renderChips(); fixHeaderOffset(); }
+});
+$('chips').addEventListener('click', e => {
+  const t = e.target.closest('.chip')?.dataset.t; if (!t) return;
+  topicFilter.has(t) ? topicFilter.delete(t) : topicFilter.add(t);
+  renderChips(); render();
+});
+document.querySelector('thead').addEventListener('click', e => {
+  const k = e.target.closest('th')?.dataset.k; if (!k) return;
+  if (k === sortKey) sortAsc = !sortAsc; else { sortKey = k; sortAsc = ['repo', 'topic', 'lang', 'notes', 'live', 'lists'].includes(k); }
+  render();
+});
+for (const id of ['q', 'fLive', 'fLang', 'fList', 'hideArchived']) $(id).addEventListener('input', render);
+
+function download(name, text, type) {
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([text], { type })), download: name });
+  a.click(); URL.revokeObjectURL(a.href);
+}
+$('exportCsv').onclick = () => {
+  const cols = ['repo', 'url', 'topic', 'stars', 'last', 'live', 'lang', 'starred', 'lists', 'tags', 'desc', 'notes'];
+  const cell = v => `"${String(Array.isArray(v) ? v.join(' ') : v ?? '').replace(/"/g, '""')}"`;
+  download('github-stars.csv', [cols.join(','), ...filtered().map(r => cols.map(c => cell(r[c])).join(','))].join('\n'), 'text/csv');
+};
+$('refresh').onclick = () => check(true);
+$('reset').onclick = async () => {
+  if (!confirm('Discard all Topic and Notes edits?')) return;
+  try { await api('DELETE', '/api/edits'); location.reload(); }
+  catch (e) { setStatus(`Could not reset the edits: ${e.message}`, true); }
+};
+addEventListener('resize', fixHeaderOffset);
+
+(async () => {
+  // The very first load has no cache, so the server fetches everything before answering.
+  const stop = watchProgress('first load: ');
+  try {
+    load(await api('GET', '/api/stars'));
+  } catch (e) {
+    return setStatus(`Could not load the stars (${e.message}). Open this page through the server: run \`npm start\` in the github-stars repository.`, true);
+  } finally {
+    stop();
+  }
+  await check(false);
+})();
+</script>
+</body>
+</html>

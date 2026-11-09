@@ -1,0 +1,19 @@
+{
+  "name": "github-stars",
+  "version": "1.0.0",
+  "description": "A local page listing the GitHub repositories you starred, with a topic, star count and liveliness for each.",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "github-stars": "src/server.js"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "refresh": "node src/server.js --refresh",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}
