@@ -62,3 +62,7 @@ npm test
 | `src/rows.js`       | Topic guessing, former lists, diff between two fetches     |
 | `src/store.js`      | Cache and data folders, JSON read/write                    |
 | `public/index.html` | The page (no build step; reload the browser after editing) |
+
+## License
+
+[MIT](LICENSE)
